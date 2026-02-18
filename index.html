@@ -31,7 +31,6 @@
   <!-- Supabase JS v2 UMD -> window.supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- ✅ CSS en raíz -->
   <link rel="stylesheet" href="./main.css" />
 </head>
 
@@ -157,20 +156,53 @@
       </div>
     </section>
 
-    <!-- Charts -->
-    <section class="grid md:grid-cols-2 gap-4">
+    <!-- Charts por DISPOSITIVO -->
+    <section class="space-y-4">
+
+      <!-- ====== PC ====== -->
       <div class="card">
-        <div class="card-title">Sensor A (X/Y)</div>
-        <canvas id="chartA"></canvas>
+        <div class="card-title">📟 Dispositivo: PC</div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card">
+            <div class="card-title">MPU9250_1 (X/Y/Z)</div>
+            <canvas id="chartPC_A"></canvas>
+          </div>
+
+          <div class="card">
+            <div class="card-title">MPU9250_2 (X/Y/Z)</div>
+            <canvas id="chartPC_B"></canvas>
+          </div>
+
+          <div class="card md:col-span-2">
+            <div class="card-title">LSM6DSOX (X/Y/Z)</div>
+            <canvas id="chartPC_C"></canvas>
+          </div>
+        </div>
       </div>
+
+      <!-- ====== RPI ====== -->
       <div class="card">
-        <div class="card-title">Sensor B (X/Y)</div>
-        <canvas id="chartB"></canvas>
+        <div class="card-title">🍓 Dispositivo: Raspberry Pi</div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card">
+            <div class="card-title">MPU9250_1 (X/Y/Z)</div>
+            <canvas id="chartRPI_A"></canvas>
+          </div>
+
+          <div class="card">
+            <div class="card-title">MPU9250_2 (X/Y/Z)</div>
+            <canvas id="chartRPI_B"></canvas>
+          </div>
+
+          <div class="card md:col-span-2">
+            <div class="card-title">LSM6DSOX (X/Y/Z)</div>
+            <canvas id="chartRPI_C"></canvas>
+          </div>
+        </div>
       </div>
-      <div class="card md:col-span-2">
-        <div class="card-title">Sensor C (X/Y)</div>
-        <canvas id="chartC"></canvas>
-      </div>
+
     </section>
 
     <!-- Log -->
@@ -197,7 +229,6 @@
     MIIDT – UAGro | Dashboard Supabase Realtime
   </footer>
 
-  <!-- ✅ JS en raíz -->
   <script type="module" src="./main.js"></script>
 </body>
 </html>
