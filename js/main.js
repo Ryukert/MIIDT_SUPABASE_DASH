@@ -1,18 +1,18 @@
-import { $id, setDot } from "./ui/dom.js";
-import { wireBasicControls } from "./ui/controls.js";
-import { createLogTable } from "./ui/logTable.js";
+import { $id, setDot } from "./dom.js";
+import { wireBasicControls } from "./controls.js";
+import { createLogTable } from "./logTable.js";
 
-import { createSbClient, loadSupabaseCfg, saveSupabaseCfg } from "./config/supabase.js";
-import { pickSensorKey } from "./config/sensors.js";
+import { createSbClient, loadSupabaseCfg, saveSupabaseCfg } from "./supabase.js";
+import { pickSensorKey } from "./sensors.js";
 
-import { createCharts, pushPoint, redraw } from "./charts/charts.js";
-import { rmsMag, fmt } from "./charts/rms.js";
+import { createCharts, pushPoint, redraw } from "./charts.js";
+import { rmsMag, fmt } from "./rms.js";
 
-import { fetchHistory } from "./data/history.js";
-import { exportLogToCSV } from "./data/export.js";
-import { startSimulator, stopSimulator } from "./data/simulator.js";
+import { fetchHistory } from "./history.js";
+import { exportLogToCSV } from "./export.js";
+import { startSimulator, stopSimulator } from "./simulator.js";
 
-import { subscribeRealtime } from "./live/supabaseLive.js";
+import { subscribeRealtime } from "./supabaseLive.js";
 
 // ---------------- UI refs
 const ui = {
@@ -66,11 +66,7 @@ ui.decLabel.textContent = String(decimation);
 const charts = createCharts();
 const log = createLogTable({ tbodyEl: ui.logBody, scrollEl: ui.logScroll, autoScrollEl: ui.autoScroll, maxRows: 250 });
 
-const buffers = {
-  A: [],
-  B: [],
-  C: [],
-};
+const buffers = { A: [], B: [], C: [] };
 let baselineRms = null;
 
 // ---------------- helpers
@@ -97,7 +93,6 @@ function clearAll() {
 }
 
 function updateRmsUI() {
-  // RMS sobre todos los puntos (mezcla) o el sensor C; aquí usamos C (común para estructura)
   const rms = rmsMag(buffers.C);
   ui.rmsNow.textContent = fmt(rms);
 
@@ -182,14 +177,10 @@ async function connectSupabase() {
 
 // ---------------- disconnect
 async function disconnectSupabase() {
-  try {
-    if (sub) await sub.stop();
-  } catch {}
+  try { if (sub) await sub.stop(); } catch {}
   sub = null;
 
-  try {
-    if (sb) await sb.removeAllChannels();
-  } catch {}
+  try { if (sb) await sb.removeAllChannels(); } catch {}
   sb = null;
 
   setDb(false);
@@ -220,7 +211,6 @@ wireBasicControls({
   onWinChange: (v) => {
     maxPoints = v;
     ui.winLabel.textContent = String(maxPoints);
-    // recorta buffers y chart
     for (const k of ["A","B","C"]) {
       while (buffers[k].length > maxPoints) buffers[k].shift();
       while (charts[k].data.labels.length > maxPoints) {
