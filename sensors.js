@@ -1,16 +1,25 @@
+// sensors.js
+// sensor_type (tu DB) -> A/B/C
+
+const MAP = {
+  "mpu9250_1": "A",
+  "mpu9250_2": "B",
+  "lsm6dsox":  "C",
+};
+
+function norm(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
 export function pickSensorKey(sensorType) {
-  const s = String(sensorType || "").toUpperCase();
+  const s = norm(sensorType);
 
-  // Mapea por letras o nombres comunes
-  if (s.includes("A") || s.includes("S1") || s.includes("SENSOR1")) return "A";
-  if (s.includes("B") || s.includes("S2") || s.includes("SENSOR2")) return "B";
-  if (s.includes("C") || s.includes("S3") || s.includes("SENSOR3")) return "C";
+  if (MAP[s]) return MAP[s];
 
-  // Si viene tipo numérico:
-  if (s === "1") return "A";
-  if (s === "2") return "B";
-  if (s === "3") return "C";
+  // fallbacks por si llega con variaciones
+  if (s.includes("mpu9250") && (s.includes("_1") || s.includes("#1") || s.includes(" 1"))) return "A";
+  if (s.includes("mpu9250") && (s.includes("_2") || s.includes("#2") || s.includes(" 2"))) return "B";
+  if (s.includes("lsm6")) return "C";
 
-  // Default: C
   return "C";
 }
