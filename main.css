@@ -1,0 +1,91 @@
+:root{
+  --bg:#F5F5F5;
+  --card:#ffffff;
+  --border:#E5E7EB;
+  --muted:#6B6E70;
+
+  --uagro-red:#8C1D18;
+  --uagro-blue:#1F3A5F;
+
+  --shadow: 0 10px 30px rgba(0,0,0,.08);
+  --radius: 16px;
+}
+
+*{ box-sizing:border-box; }
+
+body{ background: var(--bg); }
+
+/* Cards */
+.card{
+  background: var(--card);
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.card-title{
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.lbl{
+  display:block;
+  font-size:12px;
+  color: var(--muted);
+  margin-bottom:6px;
+  font-weight: 700;
+}
+
+.inp{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline:none;
+  background:#fff;
+}
+.inp:focus{
+  border-color: var(--uagro-blue);
+  box-shadow: 0 0 0 3px rgba(31,58,95,.10);
+}
+
+.btn{
+  border:1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background:#fff;
+  cursor:pointer;
+  font-weight: 800;
+  transition: transform .05s ease, filter .15s ease;
+}
+.btn:hover{ filter: brightness(0.98); }
+.btn:active{ transform: translateY(1px); }
+
+.btn-primary{
+  border-color: var(--uagro-blue);
+  background: var(--uagro-blue);
+  color:#fff;
+}
+
+/* Status dots */
+.dot{
+  width:10px; height:10px; border-radius:999px;
+  display:inline-block;
+  border:1px solid #cbd5e1;
+}
+.dot.ok{ background:#22c55e; }
+.dot.warn{ background:#f59e0b; }
+.dot.bad{ background:#ef4444; }
+
+/* Charts: altura estable */
+#chartA, #chartB, #chartC{
+  width:100% !important;
+  height: 260px !important;
+}
+
+/* Log scroll */
+.log-scroll{
+  max-height: 280px;
+  overflow:auto;
+}

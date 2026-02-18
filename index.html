@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>MIIDT – Dashboard SHM (Supabase Realtime)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            uagro: {
+              red: '#8C1D18',
+              gray: '#6B6E70',
+              blue: '#1F3A5F',
+              white: '#FFFFFF',
+              bg: '#F5F5F5'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Supabase JS v2 UMD -> window.supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ✅ CSS en raíz -->
+  <link rel="stylesheet" href="./main.css" />
+</head>
+
+<body class="bg-uagro-bg text-slate-900">
+  <header class="w-full border-b bg-white">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+      <img src="./assets/miidt.png" class="h-12 w-12 object-contain" alt="MIIDT">
+      <div class="flex-1">
+        <div class="text-sm text-uagro-gray">Universidad Autónoma de Guerrero</div>
+        <div class="text-lg font-semibold">MIIDT – Aceleraciones en Tiempo Real (Supabase)</div>
+      </div>
+      <img src="./assets/uagro.png" class="h-12 object-contain" alt="UAGro">
+    </div>
+    <img src="./assets/miidt_barra.png" class="w-full max-h-16 object-cover" alt="MIIDT Barra">
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-4 space-y-4">
+
+    <!-- Configuración -->
+    <section class="card">
+      <div class="card-title">Conexión Supabase</div>
+
+      <div class="grid md:grid-cols-3 gap-3">
+        <div>
+          <label class="lbl">Supabase URL</label>
+          <input id="sbUrl" class="inp" placeholder="https://xxxx.supabase.co" />
+        </div>
+        <div>
+          <label class="lbl">Anon Key</label>
+          <input id="sbAnon" class="inp" placeholder="eyJhbGciOi..." />
+        </div>
+        <div>
+          <label class="lbl">Tabla</label>
+          <input id="sbTable" class="inp" value="sensor_data" />
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-3 mt-3">
+        <div>
+          <label class="lbl">Histórico a cargar</label>
+          <select id="limitLast" class="inp">
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+            <option value="2000" selected>2000</option>
+            <option value="5000">5000</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="lbl">Session ID (opcional)</label>
+          <input id="sessionId" class="inp" placeholder="ej. session_2026..." />
+        </div>
+
+        <div class="flex items-end gap-2">
+          <button id="btnConnect" class="btn btn-primary w-full">Conectar</button>
+          <button id="btnDisconnect" class="btn w-full">Desconectar</button>
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-3 text-sm">
+        <div class="flex items-center gap-2">
+          <span id="dotDb" class="dot bad"></span>
+          <span>DB: <b id="dbStatus">OFF</b></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="dotRt" class="dot bad"></span>
+          <span>Realtime: <b id="rtStatus">OFF</b></span>
+        </div>
+        <div class="ml-auto text-uagro-gray">Ventana: <b id="winLabel">400</b> pts | Decimación: <b id="decLabel">1</b></div>
+      </div>
+    </section>
+
+    <!-- Controles -->
+    <section class="card">
+      <div class="card-title">Controles</div>
+
+      <div class="grid md:grid-cols-5 gap-2">
+        <button id="pauseBtn" class="btn">Pausar</button>
+        <button id="clearBtn" class="btn">Limpiar</button>
+        <button id="exportBtn" class="btn">Exportar CSV (log)</button>
+        <button id="simBtn" class="btn">Simulador OFF</button>
+        <label class="flex items-center gap-2 text-sm px-2">
+          <input id="autoScroll" type="checkbox" checked />
+          Autoscroll log
+        </label>
+      </div>
+
+      <div class="grid md:grid-cols-4 gap-3 mt-3">
+        <div>
+          <label class="lbl">Ventana (puntos)</label>
+          <select id="winSel" class="inp">
+            <option value="200">200</option>
+            <option value="400" selected>400</option>
+            <option value="800">800</option>
+            <option value="1200">1200</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Decimación (1 = todo)</label>
+          <select id="decSel" class="inp">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="lbl">Baseline RMS (opcional)</label>
+          <div class="flex gap-2">
+            <button id="btnSetBaseline" class="btn w-full">Set</button>
+            <button id="btnClearBaseline" class="btn w-full">Clear</button>
+          </div>
+        </div>
+
+        <div class="text-sm flex items-end">
+          <div class="w-full">
+            RMS actual: <b id="rmsNow">-</b> |
+            Baseline: <b id="rmsBase">-</b> |
+            Ratio: <b id="rmsRatio">-</b>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="grid md:grid-cols-2 gap-4">
+      <div class="card">
+        <div class="card-title">Sensor A (X/Y)</div>
+        <canvas id="chartA"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Sensor B (X/Y)</div>
+        <canvas id="chartB"></canvas>
+      </div>
+      <div class="card md:col-span-2">
+        <div class="card-title">Sensor C (X/Y)</div>
+        <canvas id="chartC"></canvas>
+      </div>
+    </section>
+
+    <!-- Log -->
+    <section class="card">
+      <div class="card-title">Log (últimos eventos)</div>
+      <div id="logScroll" class="log-scroll">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-white">
+            <tr class="text-left border-b">
+              <th class="p-2">Hora</th>
+              <th class="p-2">Sensor</th>
+              <th class="p-2">X</th>
+              <th class="p-2">Y</th>
+            </tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="py-6 text-center text-xs text-uagro-gray">
+    MIIDT – UAGro | Dashboard Supabase Realtime
+  </footer>
+
+  <!-- ✅ JS en raíz -->
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
