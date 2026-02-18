@@ -5,7 +5,7 @@ import { createLogTable } from "./logTable.js";
 import { createSbClient, loadSupabaseCfg, saveSupabaseCfg } from "./supabase.js";
 import { pickSensorKey } from "./sensors.js";
 
-import { createCharts, pushPoint, redraw } from "./charts.js";
+import { createChartsByDevice, pushPoint, redraw } from "./charts.js";
 import { rmsMag, fmt } from "./rms.js";
 
 import { fetchHistory } from "./history.js";
@@ -62,7 +62,8 @@ let decimation = Number(ui.decSel.value || 1);
 ui.winLabel.textContent = String(maxPoints);
 ui.decLabel.textContent = String(decimation);
 
-const charts = createCharts();
+const chartsByDevice = createChartsByDevice();
+
 const log = createLogTable({
   tbodyEl: ui.logBody,
   scrollEl: ui.logScroll,
@@ -70,7 +71,11 @@ const log = createLogTable({
   maxRows: 250
 });
 
-const buffers = { A: [], B: [], C: [] };
+const buffersByDevice = {
+  PC:  { A: [], B: [], C: [] },
+  RPI: { A: [], B: [], C: [] },
+};
+
 let baselineRms = null;
 let decCounter = 0;
 
@@ -85,11 +90,28 @@ function setRt(status) {
   setDot(ui.dotRt, ok ? "ok" : (status ? "warn" : "bad"));
 }
 
-function updateRmsUI() {
-  const rms = rmsMag(buffers.C);
-  ui.rmsNow.textContent = fmt(rms);
+function deviceKeyFromId(deviceId) {
+  const s = String(deviceId || "").toLowerCase();
+  if (s.includes("pc_") || s.startsWith("pc")) return "PC";
+  if (s.includes("rpi_") || s.startsWith("rpi")) return "RPI";
+  return null; // desconocido
+}
 
+function extractZFromRaw(raw) {
+  const m = String(raw || "").match(/Z\s*=\s*([-+]?\d+(\.\d+)?)/i);
+  return m ? Number(m[1]) : NaN;
+}
+
+function updateRmsUI() {
+  // Mantengo RMS como antes (sobre C del RPI si existe, si no, C del PC)
+  const rmsRpiC = rmsMag(buffersByDevice.RPI.C);
+  const rmsPcC  = rmsMag(buffersByDevice.PC.C);
+
+  const rms = Number.isFinite(rmsRpiC) ? rmsRpiC : rmsPcC;
+
+  ui.rmsNow.textContent = fmt(rms);
   ui.rmsBase.textContent = fmt(baselineRms);
+
   if (Number.isFinite(rms) && Number.isFinite(baselineRms) && baselineRms > 0) {
     ui.rmsRatio.textContent = (rms / baselineRms).toFixed(3);
   } else {
@@ -98,12 +120,17 @@ function updateRmsUI() {
 }
 
 function clearAll() {
-  for (const k of ["A","B","C"]) {
-    buffers[k].length = 0;
-    charts[k].data.labels = [];
-    charts[k].data.datasets[0].data = [];
-    charts[k].data.datasets[1].data = [];
-    redraw(charts[k]);
+  for (const devKey of ["PC", "RPI"]) {
+    for (const k of ["A","B","C"]) {
+      buffersByDevice[devKey][k].length = 0;
+
+      const ch = chartsByDevice[devKey][k];
+      ch.data.labels = [];
+      ch.data.datasets[0].data = [];
+      ch.data.datasets[1].data = [];
+      ch.data.datasets[2].data = [];
+      redraw(ch);
+    }
   }
   log.clear();
   updateRmsUI();
@@ -116,24 +143,36 @@ function ingestRow(row) {
   decCounter++;
   if (decimation > 1 && (decCounter % decimation !== 0)) return;
 
+  const devKey = deviceKeyFromId(row.device_id);
+  if (!devKey) return; // ignora devices raros
+
   const ts = row.ts ? new Date(row.ts) : new Date();
   const label = ts.toLocaleTimeString("es-MX", { hour12: false });
 
-  const sensorType = row.sensor_type ?? row.sensor ?? "C";
-  const key = pickSensorKey(sensorType);
+  const sensorType = row.sensor_type ?? row.sensor ?? "lsm6dsox";
+  const key = pickSensorKey(sensorType); // A/B/C
 
   const x = Number(row.x_value ?? row.x ?? 0);
   const y = Number(row.y_value ?? row.y ?? 0);
 
-  const point = { t: ts.getTime(), x, y, label, sensor: sensorType };
+  // Z (si no existe columna z_value, lo saco de raw_data)
+  const z = Number.isFinite(Number(row.z_value))
+    ? Number(row.z_value)
+    : extractZFromRaw(row.raw_data);
 
-  buffers[key].push(point);
-  while (buffers[key].length > maxPoints) buffers[key].shift();
+  const point = { t: ts.getTime(), x, y, z, label, sensor: sensorType, device: row.device_id };
 
-  pushPoint(charts[key], label, x, y, maxPoints);
-  redraw(charts[key]);
+  const buf = buffersByDevice[devKey][key];
+  buf.push(point);
+  while (buf.length > maxPoints) buf.shift();
 
-  log.push({ label, sensor: sensorType, x, y });
+  const chart = chartsByDevice[devKey][key];
+  pushPoint(chart, label, x, y, z, maxPoints);
+  redraw(chart);
+
+  // log
+  log.push({ label, sensor: `${devKey} • ${sensorType}`, x, y });
+
   updateRmsUI();
 }
 
@@ -154,7 +193,7 @@ async function connectSupabase() {
 
   sb = createSbClient(url, anon);
 
-  // Test: select mínimo
+  // Test
   try {
     const { error } = await sb.from(table).select("ts").limit(1);
     if (error) throw error;
@@ -165,9 +204,9 @@ async function connectSupabase() {
     return;
   }
 
-  // Cargar histórico
+  // Histórico
   try {
-    const data = await fetchHistory({ sb, table, limitLast, sessionId });
+    let data = await fetchHistory({ sb, table, limitLast, sessionId });
     for (const row of data) ingestRow(row);
   } catch (e) {
     console.warn("Histórico falló:", e);
@@ -214,9 +253,11 @@ wireBasicControls({
       startSimulator({
         onSample: (r) => ingestRow({
           ts: r.ts,
+          device_id: "pc_simulator",
           sensor_type: r.sensor_type,
           x_value: r.x_value,
-          y_value: r.y_value
+          y_value: r.y_value,
+          raw_data: `Z=${(Math.random()*0.05).toFixed(6)} g`
         })
       });
     } else {
@@ -226,14 +267,13 @@ wireBasicControls({
   onWinChange: (v) => {
     maxPoints = v;
     ui.winLabel.textContent = String(maxPoints);
-    for (const k of ["A","B","C"]) {
-      while (buffers[k].length > maxPoints) buffers[k].shift();
-      while (charts[k].data.labels.length > maxPoints) {
-        charts[k].data.labels.shift();
-        charts[k].data.datasets[0].data.shift();
-        charts[k].data.datasets[1].data.shift();
+
+    // recortar buffers (charts se recortan solos con pushPoint)
+    for (const devKey of ["PC", "RPI"]) {
+      for (const k of ["A","B","C"]) {
+        const buf = buffersByDevice[devKey][k];
+        while (buf.length > maxPoints) buf.shift();
       }
-      redraw(charts[k]);
     }
     updateRmsUI();
   },
@@ -242,7 +282,10 @@ wireBasicControls({
     ui.decLabel.textContent = String(decimation);
   },
   onBaselineSet: () => {
-    baselineRms = rmsMag(buffers.C);
+    // baseline toma C del RPI si existe, si no C del PC
+    const rpiC = rmsMag(buffersByDevice.RPI.C);
+    const pcC  = rmsMag(buffersByDevice.PC.C);
+    baselineRms = Number.isFinite(rpiC) ? rpiC : pcC;
     updateRmsUI();
   },
   onBaselineClear: () => {
@@ -251,7 +294,7 @@ wireBasicControls({
   },
 });
 
-// ---------------- boot: cargar cfg guardada
+// ---------------- boot
 (function boot() {
   setDb(false); setRt("");
   const cfg = loadSupabaseCfg();
@@ -259,4 +302,3 @@ wireBasicControls({
   if (cfg?.anon) ui.sbAnon.value = cfg.anon;
   if (cfg?.table) ui.sbTable.value = cfg.table;
 })();
-
