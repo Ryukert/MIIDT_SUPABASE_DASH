@@ -8,7 +8,8 @@ function makeChart(canvasId, title) {
       labels: [],
       datasets: [
         { label: `${title} - X`, data: [], tension: 0.15, pointRadius: 0 },
-        { label: `${title} - Y`, data: [], tension: 0.15, pointRadius: 0 }
+        { label: `${title} - Y`, data: [], tension: 0.15, pointRadius: 0 },
+        { label: `${title} - Z`, data: [], tension: 0.15, pointRadius: 0 },
       ]
     },
     options: {
@@ -19,30 +20,37 @@ function makeChart(canvasId, title) {
         x: { ticks: { maxTicksLimit: 10 } },
         y: { ticks: { maxTicksLimit: 6 } }
       },
-      plugins: {
-        legend: { display: true }
-      }
+      plugins: { legend: { display: true } }
     }
   });
 }
 
-export function createCharts() {
+export function createChartsByDevice() {
   return {
-    A: makeChart("chartA", "A"),
-    B: makeChart("chartB", "B"),
-    C: makeChart("chartC", "C"),
+    PC: {
+      A: makeChart("chartPC_A", "PC • MPU9250_1"),
+      B: makeChart("chartPC_B", "PC • MPU9250_2"),
+      C: makeChart("chartPC_C", "PC • LSM6DSOX"),
+    },
+    RPI: {
+      A: makeChart("chartRPI_A", "RPI • MPU9250_1"),
+      B: makeChart("chartRPI_B", "RPI • MPU9250_2"),
+      C: makeChart("chartRPI_C", "RPI • LSM6DSOX"),
+    }
   };
 }
 
-export function pushPoint(chart, label, x, y, maxPoints) {
+export function pushPoint(chart, label, x, y, z, maxPoints) {
   chart.data.labels.push(label);
   chart.data.datasets[0].data.push(x);
   chart.data.datasets[1].data.push(y);
+  chart.data.datasets[2].data.push(z);
 
   while (chart.data.labels.length > maxPoints) {
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
     chart.data.datasets[1].data.shift();
+    chart.data.datasets[2].data.shift();
   }
 }
 
