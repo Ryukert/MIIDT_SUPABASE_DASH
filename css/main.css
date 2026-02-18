@@ -17,74 +17,6 @@ body{
   background: var(--bg);
 }
 
-/* =========================
-   Header (evitar banner gigante)
-   ========================= */
-.header-wrap{
-  background:#fff;
-  border-bottom:1px solid var(--border);
-}
-
-.header-inner{
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 12px 16px;
-  display:flex;
-  align-items:center;
-  gap: 12px;
-}
-
-.brand-left{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.brand-left img{
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-}
-
-.brand-title{
-  min-width: 0;
-  line-height: 1.1;
-}
-.brand-title .sub{
-  font-size: 12px;
-  color: var(--muted);
-}
-.brand-title .main{
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.brand-right img{
-  height: 44px;
-  object-fit: contain;
-}
-
-/* Barra grande: limitar altura real */
-.header-bar{
-  width: 100%;
-  max-height: 56px;     /* <-- antes te ocupaba media pantalla */
-  object-fit: cover;
-  display:block;
-}
-
-/* =========================
-   Layout
-   ========================= */
-.page{
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 14px 16px 24px;
-  display:flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
 /* Tarjetas */
 .card{
   background: var(--card);
@@ -103,13 +35,6 @@ body{
   gap: 10px;
 }
 
-.card-title .hint{
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-/* Inputs/labels */
 .lbl{
   display:block;
   font-size:12px;
@@ -164,74 +89,17 @@ body{
 .dot.warn{ background:#f59e0b; }
 .dot.bad{ background:#ef4444; }
 
-/* =========================
-   Gráficas (altura estable)
-   ========================= */
-.chart-card canvas{
+/* ✅ Gráficas: altura estable (antes no aplicaba por .chart-card inexistente) */
+#chartA, #chartB, #chartC{
   width:100% !important;
   height: 260px !important;
 }
 
-/* Grid de charts */
-.charts-grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-@media (max-width: 900px){
-  .charts-grid{ grid-template-columns: 1fr; }
-}
-
-/* =========================
-   Log / tabla (NO se alarga)
-   ========================= */
-.log-shell{
-  border:1px solid var(--border);
-  border-radius: 14px;
-  overflow:hidden;
-  background:#fff;
-}
-
+/* Log / scroll */
 .log-scroll{
-  max-height: 280px;   /* <-- aquí se controla el “alargamiento” */
+  max-height: 280px;
   overflow:auto;
 }
-
-.log-table{
-  width:100%;
-  border-collapse: collapse;
-  table-layout: fixed; /* <-- evita que columnas gigantes estiren */
-  font-size: 13px;
-}
-
-.log-table thead th{
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 2;
-  border-bottom: 1px solid var(--border);
-  padding: 10px 10px;
-  text-align:left;
-}
-
-.log-table tbody td{
-  border-bottom: 1px solid #f1f5f9;
-  padding: 8px 10px;
-  vertical-align: middle;
-  white-space: nowrap;      /* <-- no salta de línea */
-  overflow: hidden;         /* <-- no crece */
-  text-overflow: ellipsis;  /* <-- “…” */
-}
-
-.log-table tbody tr:hover{
-  background:#f8fafc;
-}
-
-/* Anchos recomendados */
-.col-time{ width: 120px; }
-.col-sensor{ width: 140px; }
-.col-x{ width: 140px; }
-.col-y{ width: 140px; }
 
 /* Footer */
 .footer{
