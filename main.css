@@ -12,10 +12,8 @@
 }
 
 *{ box-sizing:border-box; }
-
 body{ background: var(--bg); }
 
-/* Cards */
 .card{
   background: var(--card);
   border:1px solid var(--border);
@@ -68,7 +66,6 @@ body{ background: var(--bg); }
   color:#fff;
 }
 
-/* Status dots */
 .dot{
   width:10px; height:10px; border-radius:999px;
   display:inline-block;
@@ -78,14 +75,14 @@ body{ background: var(--bg); }
 .dot.warn{ background:#f59e0b; }
 .dot.bad{ background:#ef4444; }
 
-/* Charts: altura estable */
-#chartA, #chartB, #chartC{
-  width:100% !important;
-  height: 260px !important;
-}
-
-/* Log scroll */
 .log-scroll{
   max-height: 280px;
   overflow:auto;
+}
+
+/* Altura estable para las nuevas gráficas */
+#chartPC_A, #chartPC_B, #chartPC_C,
+#chartRPI_A, #chartRPI_B, #chartRPI_C{
+  width:100% !important;
+  height: 260px !important;
 }
