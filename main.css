@@ -4,7 +4,6 @@
   --border:#E5E7EB;
   --muted:#6B6E70;
 
-  --uagro-red:#8C1D18;
   --uagro-blue:#1F3A5F;
 
   --shadow: 0 10px 30px rgba(0,0,0,.08);
@@ -80,7 +79,7 @@ body{ background: var(--bg); }
   overflow:auto;
 }
 
-/* Altura estable para las nuevas gráficas */
+/* Altura estable para 6 gráficas (X/Y) */
 #chartPC_A, #chartPC_B, #chartPC_C,
 #chartRPI_A, #chartRPI_B, #chartRPI_C{
   width:100% !important;
