@@ -156,24 +156,130 @@
       </div>
     </section>
 
+    <!-- ✅ BLOQUES (Primera/Última lectura) por DISPOSITIVO -->
+    <section class="space-y-4">
+
+      <!-- PC -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <div class="card-title">📟 PC — Resumen por sensor</div>
+          <div class="text-xs text-uagro-gray">Timestamps mostrados en <b>UTC</b></div>
+        </div>
+
+        <div class="kpi-wrap">
+          <div class="kpi-head">
+            <div class="kpi-title">Primera lectura (anclada)</div>
+            <div class="kpi-sub">Primer registro por sensor (UTC)</div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor A</div><div class="kpi-tag">mpu9250_1</div></div>
+              <div class="kpi-body">Hora: <b id="pc_first_A_t">-</b><br>X: <b id="pc_first_A_x">-</b> | Y: <b id="pc_first_A_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor B</div><div class="kpi-tag">mpu9250_2</div></div>
+              <div class="kpi-body">Hora: <b id="pc_first_B_t">-</b><br>X: <b id="pc_first_B_x">-</b> | Y: <b id="pc_first_B_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor C</div><div class="kpi-tag">lsm6dsox</div></div>
+              <div class="kpi-body">Hora: <b id="pc_first_C_t">-</b><br>X: <b id="pc_first_C_x">-</b> | Y: <b id="pc_first_C_y">-</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-wrap mt-3">
+          <div class="kpi-head">
+            <div class="kpi-title">Última lectura (en vivo)</div>
+            <div class="kpi-sub">Último registro recibido por sensor (UTC)</div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor A</div><div class="kpi-tag">mpu9250_1</div></div>
+              <div class="kpi-body">Hora: <b id="pc_last_A_t">-</b><br>X: <b id="pc_last_A_x">-</b> | Y: <b id="pc_last_A_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor B</div><div class="kpi-tag">mpu9250_2</div></div>
+              <div class="kpi-body">Hora: <b id="pc_last_B_t">-</b><br>X: <b id="pc_last_B_x">-</b> | Y: <b id="pc_last_B_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor C</div><div class="kpi-tag">lsm6dsox</div></div>
+              <div class="kpi-body">Hora: <b id="pc_last_C_t">-</b><br>X: <b id="pc_last_C_x">-</b> | Y: <b id="pc_last_C_y">-</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RPI -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <div class="card-title">🍓 RPi — Resumen por sensor</div>
+          <div class="text-xs text-uagro-gray">Timestamps mostrados en <b>UTC</b></div>
+        </div>
+
+        <div class="kpi-wrap">
+          <div class="kpi-head">
+            <div class="kpi-title">Primera lectura (anclada)</div>
+            <div class="kpi-sub">Primer registro por sensor (UTC)</div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor A</div><div class="kpi-tag">mpu9250_1</div></div>
+              <div class="kpi-body">Hora: <b id="rpi_first_A_t">-</b><br>X: <b id="rpi_first_A_x">-</b> | Y: <b id="rpi_first_A_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor B</div><div class="kpi-tag">mpu9250_2</div></div>
+              <div class="kpi-body">Hora: <b id="rpi_first_B_t">-</b><br>X: <b id="rpi_first_B_x">-</b> | Y: <b id="rpi_first_B_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor C</div><div class="kpi-tag">lsm6dsox</div></div>
+              <div class="kpi-body">Hora: <b id="rpi_first_C_t">-</b><br>X: <b id="rpi_first_C_x">-</b> | Y: <b id="rpi_first_C_y">-</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-wrap mt-3">
+          <div class="kpi-head">
+            <div class="kpi-title">Última lectura (en vivo)</div>
+            <div class="kpi-sub">Último registro recibido por sensor (UTC)</div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor A</div><div class="kpi-tag">mpu9250_1</div></div>
+              <div class="kpi-body">Hora: <b id="rpi_last_A_t">-</b><br>X: <b id="rpi_last_A_x">-</b> | Y: <b id="rpi_last_A_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor B</div><div class="kpi-tag">mpu9250_2</div></div>
+              <div class="kpi-body">Hora: <b id="rpi_last_B_t">-</b><br>X: <b id="rpi_last_B_x">-</b> | Y: <b id="rpi_last_B_y">-</b></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-row"><div class="kpi-name">Sensor C</div><div class="kpi-tag">lsm6dsox</div></div>
+              <div class="kpi-body">Hora: <b id="rpi_last_C_t">-</b><br>X: <b id="rpi_last_C_x">-</b> | Y: <b id="rpi_last_C_y">-</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
     <!-- Charts por DISPOSITIVO (X/Y) -->
     <section class="space-y-4">
 
       <!-- PC -->
       <div class="card">
         <div class="card-title">📟 Dispositivo: PC</div>
-
         <div class="grid md:grid-cols-2 gap-4">
           <div class="card">
             <div class="card-title">MPU9250_1 (X/Y)</div>
             <canvas id="chartPC_A"></canvas>
           </div>
-
           <div class="card">
             <div class="card-title">MPU9250_2 (X/Y)</div>
             <canvas id="chartPC_B"></canvas>
           </div>
-
           <div class="card md:col-span-2">
             <div class="card-title">LSM6DSOX (X/Y)</div>
             <canvas id="chartPC_C"></canvas>
@@ -184,18 +290,15 @@
       <!-- RPI -->
       <div class="card">
         <div class="card-title">🍓 Dispositivo: Raspberry Pi</div>
-
         <div class="grid md:grid-cols-2 gap-4">
           <div class="card">
             <div class="card-title">MPU9250_1 (X/Y)</div>
             <canvas id="chartRPI_A"></canvas>
           </div>
-
           <div class="card">
             <div class="card-title">MPU9250_2 (X/Y)</div>
             <canvas id="chartRPI_B"></canvas>
           </div>
-
           <div class="card md:col-span-2">
             <div class="card-title">LSM6DSOX (X/Y)</div>
             <canvas id="chartRPI_C"></canvas>
