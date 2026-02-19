@@ -99,7 +99,7 @@ let decCounter = 0;
 // KPI: “primera lectura” solo 1 vez por device/sensor
 const kpiFirstSet = { PC: { A:false, B:false, C:false }, RPI: { A:false, B:false, C:false } };
 
-// ✅ Mapeo real de device_id -> PC/RPI (auto)
+// Mapeo real de device_id -> PC/RPI (auto)
 const deviceIdMap = new Map(); // device_id exacto -> "PC" | "RPI"
 
 // ---------------- helpers
@@ -120,7 +120,7 @@ function fmt6(v){
   return n.toFixed(6);
 }
 
-// KPI timestamp en UTC (como tu captura)
+// ✅ Hora UTC HH:MM:SS
 function fmtUtcHHMMSS(ts){
   const d = ts instanceof Date ? ts : new Date(ts);
   if (isNaN(d)) return "-";
@@ -130,17 +130,21 @@ function fmtUtcHHMMSS(ts){
   return `${h}:${m}:${s}`;
 }
 
-// ✅ Si falta algún id (por si HTML no coincide), NO rompe
+// ✅ Etiqueta para eje X de gráficas (UTC también, para consistencia)
+function fmtUtcLabel(ts){
+  return fmtUtcHHMMSS(ts);
+}
+
+// ✅ Si falta algún id, NO romper
 function setText(el, value){
   if (!el) return;
   el.textContent = value;
 }
 
-// ✅ Auto-detectar los 2 device_id de la base y asignar PC/RPI
+// ✅ Auto-detectar los 2 device_id
 async function detectDeviceIds({ table, sessionId }) {
   deviceIdMap.clear();
 
-  // Tomamos últimos ~3000 registros y sacamos device_id distintos
   let q = sb.from(table).select("device_id,ts").order("ts", { ascending: false }).limit(3000);
   if (sessionId) q = q.eq("session_id", sessionId);
 
@@ -156,27 +160,22 @@ async function detectDeviceIds({ table, sessionId }) {
     if (uniq.length >= 4) break;
   }
 
-  // Heurística: si contiene "rpi" => RPI; si contiene "pc" => PC
   let pc = null, rpi = null;
   for (const id of uniq) {
     const s = id.toLowerCase();
     if (!rpi && s.includes("rpi")) rpi = id;
     if (!pc && s.includes("pc")) pc = id;
   }
-
-  // Si no encontró por palabras, asigna por orden
   if (!pc && uniq[0]) pc = uniq[0];
   if (!rpi && uniq[1]) rpi = uniq[1];
   if (pc && rpi && pc === rpi && uniq[1]) rpi = uniq[1];
 
-  // Guardar map
   if (pc) deviceIdMap.set(pc, "PC");
   if (rpi) deviceIdMap.set(rpi, "RPI");
 
   console.log("✅ Device map:", Object.fromEntries(deviceIdMap.entries()));
 }
 
-// ✅ Clasificación final por device_id exacto (y fallback por texto)
 function deviceKeyFromId(deviceId) {
   const id = String(deviceId || "").trim();
   if (!id) return null;
@@ -196,7 +195,6 @@ function updateKpi(devKey, key, ts, x, y) {
   const X = fmt6(x);
   const Y = fmt6(y);
 
-  // FIRST (solo una vez)
   if (!kpiFirstSet[devKey][key]) {
     setText(ui[`${prefix}_first_${key}_t`], T);
     setText(ui[`${prefix}_first_${key}_x`], X);
@@ -204,7 +202,6 @@ function updateKpi(devKey, key, ts, x, y) {
     kpiFirstSet[devKey][key] = true;
   }
 
-  // LAST (siempre)
   setText(ui[`${prefix}_last_${key}_t`], T);
   setText(ui[`${prefix}_last_${key}_x`], X);
   setText(ui[`${prefix}_last_${key}_y`], Y);
@@ -226,11 +223,9 @@ function updateRmsUI() {
 }
 
 function clearAll() {
-  // reset KPI flags
   kpiFirstSet.PC = { A:false, B:false, C:false };
   kpiFirstSet.RPI = { A:false, B:false, C:false };
 
-  // reset KPI text
   for (const dev of ["pc","rpi"]) {
     for (const k of ["A","B","C"]) {
       setText(ui[`${dev}_first_${k}_t`], "-");
@@ -242,7 +237,6 @@ function clearAll() {
     }
   }
 
-  // buffers + charts
   for (const devKey of ["PC", "RPI"]) {
     for (const k of ["A","B","C"]) {
       buffersByDevice[devKey][k].length = 0;
@@ -269,7 +263,9 @@ function ingestRow(row) {
   if (!devKey) return;
 
   const ts = row.ts ? new Date(row.ts) : new Date();
-  const labelLocal = ts.toLocaleTimeString("es-MX", { hour12: false });
+
+  // ✅ AHORA la tabla usa UTC igual que los KPIs
+  const labelUTC = fmtUtcLabel(ts);
 
   const sensorType = row.sensor_type ?? row.sensor ?? "lsm6dsox";
   const key = pickSensorKey(sensorType);
@@ -277,22 +273,22 @@ function ingestRow(row) {
   const x = Number(row.x_value ?? row.x ?? 0);
   const y = Number(row.y_value ?? row.y ?? 0);
 
-  // ✅ KPI
+  // KPI
   updateKpi(devKey, key, ts, x, y);
 
-  // buffers + chart
-  const point = { t: ts.getTime(), x, y, label: labelLocal, sensor: sensorType, device: row.device_id };
+  // buffers + chart (también con etiqueta UTC)
+  const point = { t: ts.getTime(), x, y, label: labelUTC, sensor: sensorType, device: row.device_id };
 
   const buf = buffersByDevice[devKey][key];
   buf.push(point);
   while (buf.length > maxPoints) buf.shift();
 
   const chart = chartsByDevice[devKey][key];
-  pushPoint(chart, labelLocal, x, y, maxPoints);
+  pushPoint(chart, labelUTC, x, y, maxPoints);
   redraw(chart);
 
   // log
-  log.push({ label: labelLocal, sensor: `${devKey} • ${sensorType}`, x, y });
+  log.push({ label: labelUTC, sensor: `${devKey} • ${sensorType}`, x, y });
 
   updateRmsUI();
 }
@@ -324,17 +320,14 @@ async function connectSupabase() {
     return;
   }
 
-  // ✅ Detecta los device_id reales ANTES de cargar
   try {
     await detectDeviceIds({ table, sessionId });
   } catch (e) {
     console.warn("No se pudo detectar device_id:", e);
   }
 
-  // limpia para que “primera” sea real
   clearAll();
 
-  // Histórico
   try {
     const data = await fetchHistory({ sb, table, limitLast, sessionId });
     for (const row of data) ingestRow(row);
@@ -342,7 +335,6 @@ async function connectSupabase() {
     console.warn("Histórico falló:", e);
   }
 
-  // Realtime
   try { if (sub) await sub.stop(); } catch {}
   sub = subscribeRealtime({
     sb,
