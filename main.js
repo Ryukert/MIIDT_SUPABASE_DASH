@@ -47,6 +47,23 @@ const ui = {
   rmsNow: $id("rmsNow"),
   rmsBase: $id("rmsBase"),
   rmsRatio: $id("rmsRatio"),
+
+  // ===== KPI IDs =====
+  pc_first_A_t: $id("pc_first_A_t"), pc_first_A_x: $id("pc_first_A_x"), pc_first_A_y: $id("pc_first_A_y"),
+  pc_first_B_t: $id("pc_first_B_t"), pc_first_B_x: $id("pc_first_B_x"), pc_first_B_y: $id("pc_first_B_y"),
+  pc_first_C_t: $id("pc_first_C_t"), pc_first_C_x: $id("pc_first_C_x"), pc_first_C_y: $id("pc_first_C_y"),
+
+  pc_last_A_t: $id("pc_last_A_t"), pc_last_A_x: $id("pc_last_A_x"), pc_last_A_y: $id("pc_last_A_y"),
+  pc_last_B_t: $id("pc_last_B_t"), pc_last_B_x: $id("pc_last_B_x"), pc_last_B_y: $id("pc_last_B_y"),
+  pc_last_C_t: $id("pc_last_C_t"), pc_last_C_x: $id("pc_last_C_x"), pc_last_C_y: $id("pc_last_C_y"),
+
+  rpi_first_A_t: $id("rpi_first_A_t"), rpi_first_A_x: $id("rpi_first_A_x"), rpi_first_A_y: $id("rpi_first_A_y"),
+  rpi_first_B_t: $id("rpi_first_B_t"), rpi_first_B_x: $id("rpi_first_B_x"), rpi_first_B_y: $id("rpi_first_B_y"),
+  rpi_first_C_t: $id("rpi_first_C_t"), rpi_first_C_x: $id("rpi_first_C_x"), rpi_first_C_y: $id("rpi_first_C_y"),
+
+  rpi_last_A_t: $id("rpi_last_A_t"), rpi_last_A_x: $id("rpi_last_A_x"), rpi_last_A_y: $id("rpi_last_A_y"),
+  rpi_last_B_t: $id("rpi_last_B_t"), rpi_last_B_x: $id("rpi_last_B_x"), rpi_last_B_y: $id("rpi_last_B_y"),
+  rpi_last_C_t: $id("rpi_last_C_t"), rpi_last_C_x: $id("rpi_last_C_x"), rpi_last_C_y: $id("rpi_last_C_y"),
 };
 
 // ---------------- state
@@ -79,17 +96,22 @@ const buffersByDevice = {
 let baselineRms = null;
 let decCounter = 0;
 
+// KPI: “primera lectura” solo se setea 1 vez por device/sensor
+const kpiFirstSet = { PC: { A:false, B:false, C:false }, RPI: { A:false, B:false, C:false } };
+
 // ---------------- helpers
 function setDb(on) {
   ui.dbStatus.textContent = on ? "ON" : "OFF";
   setDot(ui.dotDb, on ? "ok" : "bad");
 }
+
 function setRt(status) {
   const ok = status === "SUBSCRIBED";
   ui.rtStatus.textContent = ok ? "ON" : (status || "OFF");
   setDot(ui.dotRt, ok ? "ok" : (status ? "warn" : "bad"));
 }
 
+// Ajusta si tus device_id no contienen "pc" o "rpi"
 function deviceKeyFromId(deviceId) {
   const s = String(deviceId || "").toLowerCase();
   if (s.includes("pc_") || s.startsWith("pc")) return "PC";
@@ -97,8 +119,44 @@ function deviceKeyFromId(deviceId) {
   return null;
 }
 
+function fmt6(v){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "-";
+  return n.toFixed(6);
+}
+
+// KPI timestamp en UTC (como tu captura)
+function fmtUtcHHMMSS(ts){
+  const d = ts instanceof Date ? ts : new Date(ts);
+  if (isNaN(d)) return "-";
+  const h = String(d.getUTCHours()).padStart(2,"0");
+  const m = String(d.getUTCMinutes()).padStart(2,"0");
+  const s = String(d.getUTCSeconds()).padStart(2,"0");
+  return `${h}:${m}:${s}`;
+}
+
+function updateKpi(devKey, key, ts, x, y) {
+  const prefix = devKey === "PC" ? "pc" : "rpi";
+  const T = fmtUtcHHMMSS(ts);
+  const X = fmt6(x);
+  const Y = fmt6(y);
+
+  // FIRST (solo una vez)
+  if (!kpiFirstSet[devKey][key]) {
+    ui[`${prefix}_first_${key}_t`].textContent = T;
+    ui[`${prefix}_first_${key}_x`].textContent = X;
+    ui[`${prefix}_first_${key}_y`].textContent = Y;
+    kpiFirstSet[devKey][key] = true;
+  }
+
+  // LAST (siempre)
+  ui[`${prefix}_last_${key}_t`].textContent = T;
+  ui[`${prefix}_last_${key}_x`].textContent = X;
+  ui[`${prefix}_last_${key}_y`].textContent = Y;
+}
+
 function updateRmsUI() {
-  // RMS (como referencia): usa C del RPI si existe; si no C del PC
+  // RMS: usa C del RPI si existe; si no C del PC (igual que antes)
   const rmsRpiC = rmsMag(buffersByDevice.RPI.C);
   const rmsPcC  = rmsMag(buffersByDevice.PC.C);
   const rms = Number.isFinite(rmsRpiC) ? rmsRpiC : rmsPcC;
@@ -114,6 +172,23 @@ function updateRmsUI() {
 }
 
 function clearAll() {
+  // reset KPI first flags
+  kpiFirstSet.PC = { A:false, B:false, C:false };
+  kpiFirstSet.RPI = { A:false, B:false, C:false };
+
+  // reset KPI UI text
+  for (const dev of ["pc","rpi"]) {
+    for (const k of ["A","B","C"]) {
+      ui[`${dev}_first_${k}_t`].textContent = "-";
+      ui[`${dev}_first_${k}_x`].textContent = "-";
+      ui[`${dev}_first_${k}_y`].textContent = "-";
+      ui[`${dev}_last_${k}_t`].textContent = "-";
+      ui[`${dev}_last_${k}_x`].textContent = "-";
+      ui[`${dev}_last_${k}_y`].textContent = "-";
+    }
+  }
+
+  // clear buffers + charts
   for (const devKey of ["PC", "RPI"]) {
     for (const k of ["A","B","C"]) {
       buffersByDevice[devKey][k].length = 0;
@@ -125,6 +200,7 @@ function clearAll() {
       redraw(ch);
     }
   }
+
   log.clear();
   updateRmsUI();
 }
@@ -139,25 +215,31 @@ function ingestRow(row) {
   if (!devKey) return;
 
   const ts = row.ts ? new Date(row.ts) : new Date();
-  const label = ts.toLocaleTimeString("es-MX", { hour12: false });
+  const labelLocal = ts.toLocaleTimeString("es-MX", { hour12: false }); // para el LOG (local)
 
   const sensorType = row.sensor_type ?? row.sensor ?? "lsm6dsox";
-  const key = pickSensorKey(sensorType);
+  const key = pickSensorKey(sensorType); // A/B/C
 
   const x = Number(row.x_value ?? row.x ?? 0);
   const y = Number(row.y_value ?? row.y ?? 0);
 
-  const point = { t: ts.getTime(), x, y, label, sensor: sensorType, device: row.device_id };
+  // KPI update (UTC)
+  updateKpi(devKey, key, ts, x, y);
+
+  // buffers + chart
+  const point = { t: ts.getTime(), x, y, label: labelLocal, sensor: sensorType, device: row.device_id };
 
   const buf = buffersByDevice[devKey][key];
   buf.push(point);
   while (buf.length > maxPoints) buf.shift();
 
   const chart = chartsByDevice[devKey][key];
-  pushPoint(chart, label, x, y, maxPoints);
+  pushPoint(chart, labelLocal, x, y, maxPoints);
   redraw(chart);
 
-  log.push({ label, sensor: `${devKey} • ${sensorType}`, x, y });
+  // log
+  log.push({ label: labelLocal, sensor: `${devKey} • ${sensorType}`, x, y });
+
   updateRmsUI();
 }
 
@@ -188,7 +270,10 @@ async function connectSupabase() {
     return;
   }
 
-  // Histórico
+  // Antes de cargar histórico, limpia (para que “Primera lectura” sea del histórico cargado)
+  clearAll();
+
+  // Histórico (ya viene ordenado viejo->nuevo en history.js)
   try {
     const data = await fetchHistory({ sb, table, limitLast, sessionId });
     for (const row of data) ingestRow(row);
