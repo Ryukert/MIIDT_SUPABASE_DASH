@@ -13,7 +13,7 @@ import { exportLogToCSV } from "./export.js";
 import { startSimulator, stopSimulator } from "./simulator.js";
 import { subscribeRealtime } from "./supabaseLive.js";
 
-// ---------------- UI refs
+// ---------------- UI
 const ui = {
   sbUrl: $id("sbUrl"),
   sbAnon: $id("sbAnon"),
@@ -94,19 +94,13 @@ function deviceKeyFromId(deviceId) {
   const s = String(deviceId || "").toLowerCase();
   if (s.includes("pc_") || s.startsWith("pc")) return "PC";
   if (s.includes("rpi_") || s.startsWith("rpi")) return "RPI";
-  return null; // desconocido
-}
-
-function extractZFromRaw(raw) {
-  const m = String(raw || "").match(/Z\s*=\s*([-+]?\d+(\.\d+)?)/i);
-  return m ? Number(m[1]) : NaN;
+  return null;
 }
 
 function updateRmsUI() {
-  // Mantengo RMS como antes (sobre C del RPI si existe, si no, C del PC)
+  // RMS (como referencia): usa C del RPI si existe; si no C del PC
   const rmsRpiC = rmsMag(buffersByDevice.RPI.C);
   const rmsPcC  = rmsMag(buffersByDevice.PC.C);
-
   const rms = Number.isFinite(rmsRpiC) ? rmsRpiC : rmsPcC;
 
   ui.rmsNow.textContent = fmt(rms);
@@ -128,7 +122,6 @@ function clearAll() {
       ch.data.labels = [];
       ch.data.datasets[0].data = [];
       ch.data.datasets[1].data = [];
-      ch.data.datasets[2].data = [];
       redraw(ch);
     }
   }
@@ -139,40 +132,32 @@ function clearAll() {
 function ingestRow(row) {
   if (paused) return;
 
-  // Decimación
   decCounter++;
   if (decimation > 1 && (decCounter % decimation !== 0)) return;
 
   const devKey = deviceKeyFromId(row.device_id);
-  if (!devKey) return; // ignora devices raros
+  if (!devKey) return;
 
   const ts = row.ts ? new Date(row.ts) : new Date();
   const label = ts.toLocaleTimeString("es-MX", { hour12: false });
 
   const sensorType = row.sensor_type ?? row.sensor ?? "lsm6dsox";
-  const key = pickSensorKey(sensorType); // A/B/C
+  const key = pickSensorKey(sensorType);
 
   const x = Number(row.x_value ?? row.x ?? 0);
   const y = Number(row.y_value ?? row.y ?? 0);
 
-  // Z (si no existe columna z_value, lo saco de raw_data)
-  const z = Number.isFinite(Number(row.z_value))
-    ? Number(row.z_value)
-    : extractZFromRaw(row.raw_data);
-
-  const point = { t: ts.getTime(), x, y, z, label, sensor: sensorType, device: row.device_id };
+  const point = { t: ts.getTime(), x, y, label, sensor: sensorType, device: row.device_id };
 
   const buf = buffersByDevice[devKey][key];
   buf.push(point);
   while (buf.length > maxPoints) buf.shift();
 
   const chart = chartsByDevice[devKey][key];
-  pushPoint(chart, label, x, y, z, maxPoints);
+  pushPoint(chart, label, x, y, maxPoints);
   redraw(chart);
 
-  // log
   log.push({ label, sensor: `${devKey} • ${sensorType}`, x, y });
-
   updateRmsUI();
 }
 
@@ -193,7 +178,6 @@ async function connectSupabase() {
 
   sb = createSbClient(url, anon);
 
-  // Test
   try {
     const { error } = await sb.from(table).select("ts").limit(1);
     if (error) throw error;
@@ -206,7 +190,7 @@ async function connectSupabase() {
 
   // Histórico
   try {
-    let data = await fetchHistory({ sb, table, limitLast, sessionId });
+    const data = await fetchHistory({ sb, table, limitLast, sessionId });
     for (const row of data) ingestRow(row);
   } catch (e) {
     console.warn("Histórico falló:", e);
@@ -234,7 +218,7 @@ async function disconnectSupabase() {
   setRt("");
 }
 
-// ---------------- wire UI
+// ---------------- wire
 ui.btnConnect.addEventListener("click", connectSupabase);
 ui.btnDisconnect.addEventListener("click", disconnectSupabase);
 
@@ -256,8 +240,7 @@ wireBasicControls({
           device_id: "pc_simulator",
           sensor_type: r.sensor_type,
           x_value: r.x_value,
-          y_value: r.y_value,
-          raw_data: `Z=${(Math.random()*0.05).toFixed(6)} g`
+          y_value: r.y_value
         })
       });
     } else {
@@ -267,8 +250,6 @@ wireBasicControls({
   onWinChange: (v) => {
     maxPoints = v;
     ui.winLabel.textContent = String(maxPoints);
-
-    // recortar buffers (charts se recortan solos con pushPoint)
     for (const devKey of ["PC", "RPI"]) {
       for (const k of ["A","B","C"]) {
         const buf = buffersByDevice[devKey][k];
@@ -282,7 +263,6 @@ wireBasicControls({
     ui.decLabel.textContent = String(decimation);
   },
   onBaselineSet: () => {
-    // baseline toma C del RPI si existe, si no C del PC
     const rpiC = rmsMag(buffersByDevice.RPI.C);
     const pcC  = rmsMag(buffersByDevice.PC.C);
     baselineRms = Number.isFinite(rpiC) ? rpiC : pcC;
