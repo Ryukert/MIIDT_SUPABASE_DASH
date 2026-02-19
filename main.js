@@ -96,8 +96,11 @@ const buffersByDevice = {
 let baselineRms = null;
 let decCounter = 0;
 
-// KPI: “primera lectura” solo se setea 1 vez por device/sensor
+// KPI: “primera lectura” solo 1 vez por device/sensor
 const kpiFirstSet = { PC: { A:false, B:false, C:false }, RPI: { A:false, B:false, C:false } };
+
+// ✅ Mapeo real de device_id -> PC/RPI (auto)
+const deviceIdMap = new Map(); // device_id exacto -> "PC" | "RPI"
 
 // ---------------- helpers
 function setDb(on) {
@@ -109,14 +112,6 @@ function setRt(status) {
   const ok = status === "SUBSCRIBED";
   ui.rtStatus.textContent = ok ? "ON" : (status || "OFF");
   setDot(ui.dotRt, ok ? "ok" : (status ? "warn" : "bad"));
-}
-
-// Ajusta si tus device_id no contienen "pc" o "rpi"
-function deviceKeyFromId(deviceId) {
-  const s = String(deviceId || "").toLowerCase();
-  if (s.includes("pc_") || s.startsWith("pc")) return "PC";
-  if (s.includes("rpi_") || s.startsWith("rpi")) return "RPI";
-  return null;
 }
 
 function fmt6(v){
@@ -135,6 +130,66 @@ function fmtUtcHHMMSS(ts){
   return `${h}:${m}:${s}`;
 }
 
+// ✅ Si falta algún id (por si HTML no coincide), NO rompe
+function setText(el, value){
+  if (!el) return;
+  el.textContent = value;
+}
+
+// ✅ Auto-detectar los 2 device_id de la base y asignar PC/RPI
+async function detectDeviceIds({ table, sessionId }) {
+  deviceIdMap.clear();
+
+  // Tomamos últimos ~3000 registros y sacamos device_id distintos
+  let q = sb.from(table).select("device_id,ts").order("ts", { ascending: false }).limit(3000);
+  if (sessionId) q = q.eq("session_id", sessionId);
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  const uniq = [];
+  const seen = new Set();
+  for (const r of (data || [])) {
+    const id = String(r.device_id || "").trim();
+    if (!id) continue;
+    if (!seen.has(id)) { seen.add(id); uniq.push(id); }
+    if (uniq.length >= 4) break;
+  }
+
+  // Heurística: si contiene "rpi" => RPI; si contiene "pc" => PC
+  let pc = null, rpi = null;
+  for (const id of uniq) {
+    const s = id.toLowerCase();
+    if (!rpi && s.includes("rpi")) rpi = id;
+    if (!pc && s.includes("pc")) pc = id;
+  }
+
+  // Si no encontró por palabras, asigna por orden
+  if (!pc && uniq[0]) pc = uniq[0];
+  if (!rpi && uniq[1]) rpi = uniq[1];
+  if (pc && rpi && pc === rpi && uniq[1]) rpi = uniq[1];
+
+  // Guardar map
+  if (pc) deviceIdMap.set(pc, "PC");
+  if (rpi) deviceIdMap.set(rpi, "RPI");
+
+  console.log("✅ Device map:", Object.fromEntries(deviceIdMap.entries()));
+}
+
+// ✅ Clasificación final por device_id exacto (y fallback por texto)
+function deviceKeyFromId(deviceId) {
+  const id = String(deviceId || "").trim();
+  if (!id) return null;
+
+  if (deviceIdMap.has(id)) return deviceIdMap.get(id);
+
+  const s = id.toLowerCase();
+  if (s.includes("rpi")) return "RPI";
+  if (s.includes("pc")) return "PC";
+
+  return null;
+}
+
 function updateKpi(devKey, key, ts, x, y) {
   const prefix = devKey === "PC" ? "pc" : "rpi";
   const T = fmtUtcHHMMSS(ts);
@@ -143,20 +198,19 @@ function updateKpi(devKey, key, ts, x, y) {
 
   // FIRST (solo una vez)
   if (!kpiFirstSet[devKey][key]) {
-    ui[`${prefix}_first_${key}_t`].textContent = T;
-    ui[`${prefix}_first_${key}_x`].textContent = X;
-    ui[`${prefix}_first_${key}_y`].textContent = Y;
+    setText(ui[`${prefix}_first_${key}_t`], T);
+    setText(ui[`${prefix}_first_${key}_x`], X);
+    setText(ui[`${prefix}_first_${key}_y`], Y);
     kpiFirstSet[devKey][key] = true;
   }
 
   // LAST (siempre)
-  ui[`${prefix}_last_${key}_t`].textContent = T;
-  ui[`${prefix}_last_${key}_x`].textContent = X;
-  ui[`${prefix}_last_${key}_y`].textContent = Y;
+  setText(ui[`${prefix}_last_${key}_t`], T);
+  setText(ui[`${prefix}_last_${key}_x`], X);
+  setText(ui[`${prefix}_last_${key}_y`], Y);
 }
 
 function updateRmsUI() {
-  // RMS: usa C del RPI si existe; si no C del PC (igual que antes)
   const rmsRpiC = rmsMag(buffersByDevice.RPI.C);
   const rmsPcC  = rmsMag(buffersByDevice.PC.C);
   const rms = Number.isFinite(rmsRpiC) ? rmsRpiC : rmsPcC;
@@ -172,23 +226,23 @@ function updateRmsUI() {
 }
 
 function clearAll() {
-  // reset KPI first flags
+  // reset KPI flags
   kpiFirstSet.PC = { A:false, B:false, C:false };
   kpiFirstSet.RPI = { A:false, B:false, C:false };
 
-  // reset KPI UI text
+  // reset KPI text
   for (const dev of ["pc","rpi"]) {
     for (const k of ["A","B","C"]) {
-      ui[`${dev}_first_${k}_t`].textContent = "-";
-      ui[`${dev}_first_${k}_x`].textContent = "-";
-      ui[`${dev}_first_${k}_y`].textContent = "-";
-      ui[`${dev}_last_${k}_t`].textContent = "-";
-      ui[`${dev}_last_${k}_x`].textContent = "-";
-      ui[`${dev}_last_${k}_y`].textContent = "-";
+      setText(ui[`${dev}_first_${k}_t`], "-");
+      setText(ui[`${dev}_first_${k}_x`], "-");
+      setText(ui[`${dev}_first_${k}_y`], "-");
+      setText(ui[`${dev}_last_${k}_t`], "-");
+      setText(ui[`${dev}_last_${k}_x`], "-");
+      setText(ui[`${dev}_last_${k}_y`], "-");
     }
   }
 
-  // clear buffers + charts
+  // buffers + charts
   for (const devKey of ["PC", "RPI"]) {
     for (const k of ["A","B","C"]) {
       buffersByDevice[devKey][k].length = 0;
@@ -215,15 +269,15 @@ function ingestRow(row) {
   if (!devKey) return;
 
   const ts = row.ts ? new Date(row.ts) : new Date();
-  const labelLocal = ts.toLocaleTimeString("es-MX", { hour12: false }); // para el LOG (local)
+  const labelLocal = ts.toLocaleTimeString("es-MX", { hour12: false });
 
   const sensorType = row.sensor_type ?? row.sensor ?? "lsm6dsox";
-  const key = pickSensorKey(sensorType); // A/B/C
+  const key = pickSensorKey(sensorType);
 
   const x = Number(row.x_value ?? row.x ?? 0);
   const y = Number(row.y_value ?? row.y ?? 0);
 
-  // KPI update (UTC)
+  // ✅ KPI
   updateKpi(devKey, key, ts, x, y);
 
   // buffers + chart
@@ -270,10 +324,17 @@ async function connectSupabase() {
     return;
   }
 
-  // Antes de cargar histórico, limpia (para que “Primera lectura” sea del histórico cargado)
+  // ✅ Detecta los device_id reales ANTES de cargar
+  try {
+    await detectDeviceIds({ table, sessionId });
+  } catch (e) {
+    console.warn("No se pudo detectar device_id:", e);
+  }
+
+  // limpia para que “primera” sea real
   clearAll();
 
-  // Histórico (ya viene ordenado viejo->nuevo en history.js)
+  // Histórico
   try {
     const data = await fetchHistory({ sb, table, limitLast, sessionId });
     for (const row of data) ingestRow(row);
