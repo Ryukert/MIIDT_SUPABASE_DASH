@@ -9,7 +9,6 @@ function makeChart(canvasId, title) {
       datasets: [
         { label: `${title} - X`, data: [], tension: 0.15, pointRadius: 0 },
         { label: `${title} - Y`, data: [], tension: 0.15, pointRadius: 0 },
-        { label: `${title} - Z`, data: [], tension: 0.15, pointRadius: 0 },
       ]
     },
     options: {
@@ -40,17 +39,15 @@ export function createChartsByDevice() {
   };
 }
 
-export function pushPoint(chart, label, x, y, z, maxPoints) {
+export function pushPoint(chart, label, x, y, maxPoints) {
   chart.data.labels.push(label);
   chart.data.datasets[0].data.push(x);
   chart.data.datasets[1].data.push(y);
-  chart.data.datasets[2].data.push(z);
 
   while (chart.data.labels.length > maxPoints) {
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
     chart.data.datasets[1].data.shift();
-    chart.data.datasets[2].data.shift();
   }
 }
 
